@@ -1,4 +1,4 @@
-# IOBroker_Data_Visualization
+# iob-dash
 
 The docker image iob-dash provides a python application to visualize meter readings stored by the iobroker-sql adapter into a mariadb / mysql database.
 The container needs only read access to the database and no direct access to IOBroker itself.
