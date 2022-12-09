@@ -1,0 +1,6 @@
+plotly
+mysql.connector
+dash
+datetime
+pandas
+gunicorn
