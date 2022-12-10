@@ -6,8 +6,6 @@ pipeline {
                 branch 'main'
             }
             steps {
-                input 'Deploy to Production?'
-                milestone(1)
                 withCredentials([usernamePassword(credentialsId: 'b5db816e-19d8-498b-94fa-fd1ee1d8b206', passwordVariable: 'SSHPASSWD', usernameVariable: 'SSHUSER')]) {
                     script {
                         try {
