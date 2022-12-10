@@ -16,6 +16,7 @@ pipeline {
                            }
                     script {
                         try {
+                            sh "sshpass -p '$SSHPASSWD' -v ssh -o StrictHostKeyChecking=no $SSHUSER@c-host1 \"rm -rf ${GIT_REPO_URL}; echo tried to remove existing folder\""
                             sh "sshpass -p '$SSHPASSWD' -v ssh -o StrictHostKeyChecking=no $SSHUSER@c-host1 \"git clone ${GIT_REPO_URL}\""
                             sh "sshpass -p '$SSHPASSWD' -v ssh -o StrictHostKeyChecking=no $SSHUSER@c-host1 \"cd ${GIT_REPO_URL}; docker build -f Dockerfile -t iob-dash .\""
                         } catch (err) {
