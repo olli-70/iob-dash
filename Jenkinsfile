@@ -1,7 +1,8 @@
 pipeline {
     agent any
     stages {
-        stages {
+
+        
         stage('Build Docker Image') {
             when {
                 branch 'main'
@@ -12,6 +13,8 @@ pipeline {
                 }
             }
         }
+
+
         stage('DeployTest') {
             when {
                 branch 'main'
