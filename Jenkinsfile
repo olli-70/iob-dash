@@ -1,2 +1,2 @@
 echo 'Testmessage'
-echo 'test5'
+echo 'test6'
