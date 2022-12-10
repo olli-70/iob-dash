@@ -8,6 +8,7 @@ In order to query all meters by name, a corresponding alias for the data points 
 alias-counter-METERNAME
 (alias-counter-gas, alias-counter-water....)
 
+
 ## create docker image
 change into repo folder 
 ```
