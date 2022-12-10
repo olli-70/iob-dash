@@ -7,7 +7,7 @@ The values are written to the database by the iobroker sql-adapter (https://gith
 In order to query all meters by name, a corresponding alias for the data points must be assigned in the sql adapter:
 alias-counter-METERNAME
 (alias-counter-gas, alias-counter-water....).  
-
+ 
 
 ## create docker image
 change into repo folder 
