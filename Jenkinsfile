@@ -1,6 +1,17 @@
 pipeline {
     agent any
     stages {
+        stages {
+        stage('Build Docker Image') {
+            when {
+                branch 'main'
+            }
+            steps {
+                script {
+                    app = docker.build("ehome/iob-dash")
+                }
+            }
+        }
         stage('DeployTest') {
             when {
                 branch 'main'
