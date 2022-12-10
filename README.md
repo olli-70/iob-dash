@@ -6,7 +6,7 @@ The container needs only read access to the database and no direct access to IOB
 The values are written to the database by the iobroker sql-adapter (https://github.com/ioBroker/ioBroker.sql).
 In order to query all meters by name, a corresponding alias for the data points must be assigned in the sql adapter:
 alias-counter-METERNAME
-(alias-counter-gas, alias-counter-water....) . 
+(alias-counter-gas, alias-counter-water....) .  
 
 
 ## create docker image
