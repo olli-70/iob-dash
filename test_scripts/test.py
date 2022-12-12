@@ -41,6 +41,8 @@ def get_conter_per_month(datapoint_name):
           
         result[year][int(month-1)]=value      
 
+      df=pd.DataFrame.from_dict(result)
+      print(f"Dataframe: {df}")
       return result
     
     except database.Error as e:

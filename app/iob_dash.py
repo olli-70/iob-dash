@@ -1,4 +1,5 @@
 import plotly.graph_objects as go 
+import plotly.express as px
 import mysql.connector as database
 import dash
 from dash import dcc
@@ -8,7 +9,8 @@ import datetime
 import pandas as pd
 import logging
 import os
-import flask
+import numpy
+
 
 
 app = dash.Dash(__name__)
@@ -26,6 +28,7 @@ host =     os.environ.get('DB_HOST')
 port =     os.environ.get('DB_PORT', 3306)
 db =       os.environ.get('DB', "iobroker")
 
+# connect to iobroker db
 connection = database.connect(
     user=user,
     password=password,
@@ -37,9 +40,9 @@ default_alias=os.environ.get('DEFAULT_ALIAS','alias-counter-gas')
 
 cursor = connection.cursor()
 
-
-
-
+# get a few nice colors, enough for all years
+named_colorscales = px.colors.sequential.Aggrnyl_r
+named_colorscales.append(px.colors.sequential.Aggrnyl)
 
 currentDateTime = datetime.datetime.now()
 date = currentDateTime.date()
@@ -60,15 +63,15 @@ def get_conter_per_month(datapoint_name):
           result[year]=[None] * 12
           
         result[year][int(month-1)]=value      
-
-      return result
+      
+      df=pd.DataFrame.from_dict(result)
+      return df
     
     except database.Error as e:
       print(f"Error retrieving entry from database: {e}")
 
-def avg_per_month(value_dict,year):
+def avg_per_month(value_dict):
     df=pd.DataFrame.from_dict(value_dict)
-    #df2=df.drop([year], axis=1)
     means=df.mean(axis=1)
     logging.debug(f"avg_per_month, means: {means}")
     return means
@@ -107,34 +110,39 @@ def get_counter_alias():
 
 @app.callback(Output('alias_counter_graph', 'figure'),
               Input('alias_selector', 'value'),
-              Input('year_selector', 'value'))
-def create_chart(alias_name,year):
+              [Input('year_selector', 'value')])
+def create_chart(alias_name,years):
    
-  logging.debug(f"create_chart, alias_name: {alias_name}") 
-  logging.debug(f"create_chart, year: {year}")
+  year_list=[]
+  if type(years) == int:
+    year_list.append(years)
+  else:
+    year_list=years
+  year_list.sort()
 
+  logging.debug(f"year-list: {year_list}")
   # axuis_name
-  x_name=year
-  logging.debug(f"create_chart, x_name: {x_name}")
-  # basics for the graphs:
-  
+   
   fig = go.Figure()
   data=get_conter_per_month(alias_name)
-  avg=avg_per_month(data,year)
+  avg=avg_per_month(data)
   print(f"avg: {avg}")
   # add data of year
 
-  fig.add_trace(go.Bar(
-      name=x_name,
-      y=data[year]
-      
-  ))
-
-  # add avg data
+  col_count=0
+  for year in year_list:
+    fig.add_trace(go.Bar(
+        name=f"{year}",
+        marker_color=named_colorscales[col_count],
+        y=data[year]
+    ))
+    col_count+=1
+  
 
   fig.add_trace(go.Bar(
       y=avg,
-      name=f"average ausser {year}"
+      name=f"average",
+      marker_color='red',
   ))
 
   fig.update_xaxes(
@@ -154,8 +162,6 @@ def create_chart(alias_name,year):
 # list of available counter(s)
 alias_list=get_counter_alias()
 year_list=(get_years())
-default_alias='alias-counter-gas'
-
 
 app.layout = html.Div(
     children=[
@@ -177,7 +183,7 @@ app.layout = html.Div(
                                                       ),
                                          dcc.Dropdown(id='year_selector',
                                                       options=year_list,
-                                                      multi=False, 
+                                                      multi=True, 
                                                       value=year_list[0],
                                                       style={'backgroundColor': '#1E1E1E'},
                                                       className='stockselector'
