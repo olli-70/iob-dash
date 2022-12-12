@@ -1,19 +1,22 @@
-import plotly.graph_objects as go 
-import plotly.express as px
+import plotly.graph_objects as go
 import mysql.connector as database
 import dash
 from dash import dcc
 from dash import html
 from dash.dependencies import Input, Output
+import dash_bootstrap_components as dbc
+
 import datetime
 import pandas as pd
 import logging
 import os
-import numpy
 
 
 
-app = dash.Dash(__name__)
+
+app = dash.Dash(__name__, external_stylesheets=[dbc.themes.MATERIA])
+
+
 server = app.server
 
 
@@ -28,6 +31,20 @@ host =     os.environ.get('DB_HOST')
 port =     os.environ.get('DB_PORT', 3306)
 db =       os.environ.get('DB', "iobroker")
 
+# dict of months
+month = {	'1':'Jan',
+		      '2':'Feb',
+		      '3':'Mar',
+		      '4':'Apr',
+		      '5':'May',
+		      '6':'Jun',
+		      '7':'Jul',
+		      '8':'Aug',
+		      '9':'Sep',
+		      '10':'Oct',
+		      '11':'Nov',
+		      '12':'Dec'	}
+
 # connect to iobroker db
 connection = database.connect(
     user=user,
@@ -40,40 +57,38 @@ default_alias=os.environ.get('DEFAULT_ALIAS','alias-counter-gas')
 
 cursor = connection.cursor()
 
-# get a few nice colors, enough for all years
-named_colorscales = px.colors.sequential.Aggrnyl_r
-named_colorscales.append(px.colors.sequential.Aggrnyl)
-
 currentDateTime = datetime.datetime.now()
 date = currentDateTime.date()
 current_year = int(date.strftime("%Y"))
 
 
-def get_conter_per_month(datapoint_name):
-    result={}
+def get_conter_per_month(datapoint_name,years):
+
+    # make sure that years is a list and convert it to string
+    years_string=""
+    if type(years) == int:
+      years_string=str(years)
+    else:
+      years_string=','.join(str(item) for item in years)
+
     try:
-      query = "SELECT year(FROM_UNIXTIME(substring(ts,1,10))) as year, month(FROM_UNIXTIME(substring(ts,1,10))) as month ,round(max(val)-min(val),0) as value FROM ts_number \
-                    WHERE id = (select id from datapoints where name =%s) \
+      query = f"SELECT max(date(FROM_UNIXTIME(substring(ts,1,10)))) as date, round(max(val)-min(val),0) as value FROM ts_number \
+                    WHERE id = (select id from datapoints where name =\"{datapoint_name}\") and \
+                    year(FROM_UNIXTIME(substring(ts,1,10))) in ({years_string})  \
                     GROUP BY year(FROM_UNIXTIME(substring(ts,1,10))),month(FROM_UNIXTIME(substring(ts,1,10))) \
                     ORDER BY ts"
-      cursor.execute(query,[datapoint_name])
-      
-      for (year, month, value) in cursor:
-        if not result.get(year):
-          result[year]=[None] * 12
-          
-        result[year][int(month-1)]=value      
-      
-      df=pd.DataFrame.from_dict(result)
-      return df
+      df = pd.read_sql(query, con = connection)
+      df['date'] = pd.to_datetime(df.date, format='%Y-%m-%d')
+      df_per_month=df.set_index([df.date.dt.month, df.date.dt.year]).value.unstack()
+      return df_per_month
     
     except database.Error as e:
       print(f"Error retrieving entry from database: {e}")
 
-def avg_per_month(value_dict):
-    df=pd.DataFrame.from_dict(value_dict)
+
+def avg_per_month(df):
     means=df.mean(axis=1)
-    logging.debug(f"avg_per_month, means: {means}")
+    logging.debug(f"avg_per_month, means: \n{means}")
     return means
 
 
@@ -107,49 +122,35 @@ def get_counter_alias():
     except database.Error as e:
       print(f"Error retrieving entry from database: {e}")
 
-
 @app.callback(Output('alias_counter_graph', 'figure'),
               Input('alias_selector', 'value'),
               [Input('year_selector', 'value')])
 def create_chart(alias_name,years):
    
-  year_list=[]
-  if type(years) == int:
-    year_list.append(years)
-  else:
-    year_list=years
-  year_list.sort()
+  # convert year_selector values to sorted list
 
-  logging.debug(f"year-list: {year_list}")
-  # axuis_name
-   
   fig = go.Figure()
-  data=get_conter_per_month(alias_name)
-  avg=avg_per_month(data)
-  print(f"avg: {avg}")
+  
+  df_monthly_values=get_conter_per_month(alias_name,years)
+  avg=avg_per_month(df_monthly_values)
+  
   # add data of year
 
-  col_count=0
-  for year in year_list:
-    fig.add_trace(go.Bar(
-        name=f"{year}",
-        marker_color=named_colorscales[col_count],
-        y=data[year]
-    ))
-    col_count+=1
-  
+  print(f"df_monthly_values {df_monthly_values}")
 
-  fig.add_trace(go.Bar(
-      y=avg,
-      name=f"average",
-      marker_color='red',
-  ))
+  # add the data columns as bar rows for each year
 
-  fig.update_xaxes(
-    ticktext=["Jan","Feb","Mar","Apr","Mai","Jun","Jul","Aug","Sep","Okt","Nov","Dez"],
-    tickvals=[0,1,2,3,4,5,6,7,8,9,10,11]
-    
-)
+  for y in df_monthly_values:
+    dfy=df_monthly_values[y]
+    x_val=[]
+    for nr in list(dfy.index.values):
+      x_val.append(month[str(nr)])
+    fig.add_bar(x = x_val, y = list(df_monthly_values[y]), name = str(y))
+
+  # add the average as last bar row
+  for nr in list(avg.index.values):
+      x_val.append(month[str(nr)])
+  fig.add_bar(x = x_val, y = list(avg), name = 'avg')
 
   fig.update_layout(legend_title_text='Verbrauch')
   fig.update_layout({'plot_bgcolor': 'rgba(0, 0, 0, 0)',
@@ -163,8 +164,16 @@ def create_chart(alias_name,years):
 alias_list=get_counter_alias()
 year_list=(get_years())
 
-app.layout = html.Div(
-    children=[
+alias_list_items=[]
+for counter in alias_list:
+   item=dbc.DropdownMenuItem(counter)
+   alias_list_items.append(item)
+
+print(alias_list_items)
+
+
+app.layout = dbc.Container( (
+  [
         html.Div(className='row',
                  children=[
                     html.Div(className='four columns div-user-controls',
@@ -174,37 +183,40 @@ app.layout = html.Div(
                                  html.Div(
                                      className='div-for-dropdown',
                                      children=[
+                                         dbc.DropdownMenu(
+                                          label="Zaehler",
+                                          children=alias_list,
+                                      ),   
+
                                          dcc.Dropdown(id='alias_selector',
                                                       options=alias_list,
                                                       multi=False, 
                                                       value=alias_list[0],
-                                                      style={'backgroundColor': '#1E1E1E'},
-                                                      className='stockselector'
+                                                      
+                                                      
                                                       ),
                                          dcc.Dropdown(id='year_selector',
                                                       options=year_list,
                                                       multi=True, 
                                                       value=year_list[0],
-                                                      style={'backgroundColor': '#1E1E1E'},
-                                                      className='stockselector'
+                                                  
+                                                      
                                                       ),
+                                        dcc.Graph(
+                                                     id='alias_counter_graph',
+                                                     config={'displayModeBar': False},
+                                                     animate=True
+                                                    )
                                      ],
-                                     style={'color': '#1E1E1E'})
+                                     )
                                 ]
                              ),
-                    html.Div(className='eight columns div-for-charts bg-grey',
-                             children=[
-                                 dcc.Graph(
-                                      id='alias_counter_graph',
-                                      config={'displayModeBar': False},
-                                      animate=True
-                                  )
-
-                             ])
+                    
                               ])
+                          
         ]
 
-)
+))
 
 
 if __name__ == '__main__':
