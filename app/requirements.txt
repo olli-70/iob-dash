@@ -4,3 +4,4 @@ dash
 datetime
 pandas
 gunicorn
+dash_bootstrap_components

@@ -29,7 +29,7 @@ x_val=["Ja","Fe","Ma","Ap","Ma","Ju","Jul","Au","Se","Ok","No","De"]
 def get_conter_per_month(datapoint_name):
     result={}
     try:
-      query = "SELECT year(FROM_UNIXTIME(substring(ts,1,10))) as year, month(FROM_UNIXTIME(substring(ts,1,10))) as month ,round(max(val)-min(val),0) as value FROM ts_number \
+      query = "ELECT max(date(FROM_UNIXTIME(substring(ts,1,10)))) as date, round(max(val)-min(val),0) as value FROM ts_number \
                     WHERE id = (select id from datapoints where name =%s) \
                     GROUP BY year(FROM_UNIXTIME(substring(ts,1,10))),month(FROM_UNIXTIME(substring(ts,1,10))) \
                     ORDER BY ts"
@@ -41,6 +41,8 @@ def get_conter_per_month(datapoint_name):
           
         result[year][int(month-1)]=value      
 
+      df=pd.DataFrame.from_dict(result)
+      print(f"Dataframe: {df}")
       return result
     
     except database.Error as e:
