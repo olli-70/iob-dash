@@ -183,15 +183,18 @@ app.layout = dbc.Container( (
                                  html.Div(
                                      className='div-for-dropdown',
                                      children=[
-                                         dbc.DropdownMenu(
-                                          label="Zaehler",
-                                          children=alias_list,
-                                      ),   
+                                       #  dbc.DropdownMenu(
+                                       #   id='alias_selector',
+                                       #   
+                                       #   label="Zaehler",
+                                       #   size="sm",
+                                       #   children=alias_list_items,
+                                       #),   
 
                                          dcc.Dropdown(id='alias_selector',
                                                       options=alias_list,
                                                       multi=False, 
-                                                      value=alias_list[0],
+                                                      value=alias_list[0]
                                                       
                                                       
                                                       ),
@@ -215,8 +218,9 @@ app.layout = dbc.Container( (
                               ])
                           
         ]
+        
 
-))
+), className="dash-bootstrap")
 
 
 if __name__ == '__main__':
